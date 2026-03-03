@@ -3,6 +3,48 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
+ * Sleep helper for retry delays
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Call Gemini with retry logic for rate limits (429 errors)
+ */
+async function callGeminiWithRetry(model, prompt, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      const isRateLimit =
+        error.message?.includes('429') ||
+        error.message?.includes('Too Many Requests') ||
+        error.message?.includes('quota');
+
+      if (isRateLimit && attempt < maxRetries) {
+        // Extract retry delay from error or use exponential backoff
+        const retryMatch = error.message.match(/retry\s*(?:in|after)\s*(\d+)/i);
+        const waitSeconds = retryMatch ? parseInt(retryMatch[1]) + 5 : 15 * attempt;
+        console.log(`⏳ Rate limited. Waiting ${waitSeconds}s before retry ${attempt}/${maxRetries}...`);
+        await sleep(waitSeconds * 1000);
+        continue;
+      }
+
+      // Better error messages
+      if (isRateLimit) {
+        throw new Error(
+          'Gemini API quota exceeded. Please wait a minute and try again, or use a different API key.'
+        );
+      }
+      throw error;
+    }
+  }
+}
+
+/**
  * Build the prompt for generating test questions
  */
 function buildGenerationPrompt(config, documentText = null) {
@@ -98,9 +140,8 @@ async function generateQuestions(config, documentText = null) {
 
     const prompt = buildGenerationPrompt(config, documentText);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
+    console.log('🤖 Calling Gemini AI to generate questions...');
+    let text = await callGeminiWithRetry(model, prompt, 3);
 
     // Clean up the response - remove markdown code blocks if present
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -156,9 +197,8 @@ Respond with ONLY a JSON object:
 
 Return ONLY the JSON, no markdown, no code blocks.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
+    const result = await callGeminiWithRetry(model, prompt, 2);
+    let text = result;
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     return JSON.parse(text);
