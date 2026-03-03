@@ -10,10 +10,7 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import {
   TrendingUp,
@@ -23,13 +20,48 @@ import {
   AlertTriangle,
   CheckCircle,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+const DIFFICULTY_COLORS = {
+  easy: '#22c55e',
+  medium: '#f59e0b',
+  hard: '#ef4444',
+  mixed: '#8b5cf6',
+};
+
+// Custom tick for vertical bar chart Y-axis to truncate long topic names
+const TruncatedTick = ({ x, y, payload }) => {
+  const maxLen = 18;
+  const text =
+    payload.value.length > maxLen
+      ? payload.value.substring(0, maxLen) + '…'
+      : payload.value;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{payload.value}</title>
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill="#6b7280"
+        fontSize={12}
+      >
+        {text}
+      </text>
+    </g>
+  );
+};
+
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [topicPage, setTopicPage] = useState(1);
+  const TOPICS_PER_PAGE = 5;
 
   useEffect(() => {
     fetchAnalytics();
@@ -144,19 +176,21 @@ export default function Analytics() {
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Accuracy by Topic</h2>
           {topicAnalysis.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topicAnalysis} layout="vertical">
+            <ResponsiveContainer width="100%" height={Math.max(280, topicAnalysis.length * 40)}>
+              <BarChart data={topicAnalysis} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" domain={[0, 100]} fontSize={12} />
+                <XAxis type="number" domain={[0, 100]} fontSize={12} unit="%" />
                 <YAxis
                   dataKey="topic"
                   type="category"
-                  width={100}
-                  fontSize={12}
-                  tick={{ fill: '#6b7280' }}
+                  width={140}
+                  tick={<TruncatedTick />}
                 />
-                <Tooltip formatter={(value) => [`${value}%`, 'Accuracy']} />
-                <Bar dataKey="accuracy" radius={[0, 4, 4, 0]}>
+                <Tooltip
+                  formatter={(value) => [`${value}%`, 'Accuracy']}
+                  labelFormatter={(label) => label}
+                />
+                <Bar dataKey="accuracy" radius={[0, 4, 4, 0]} barSize={20}>
                   {topicAnalysis.map((entry, index) => (
                     <Cell
                       key={index}
@@ -180,29 +214,48 @@ export default function Analytics() {
 
       {/* Difficulty Breakdown & Strengths/Weaknesses */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Difficulty Pie Chart */}
+        {/* Difficulty Breakdown */}
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Accuracy by Difficulty</h2>
           {difficultyAnalysis.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={difficultyAnalysis}
-                  dataKey="accuracy"
-                  nameKey="difficulty"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ difficulty, accuracy }) => `${difficulty}: ${accuracy}%`}
-                >
-                  {difficultyAnalysis.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [`${value}%`, 'Accuracy']} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="space-y-5 py-4">
+              {difficultyAnalysis.map((d) => {
+                const color =
+                  DIFFICULTY_COLORS[d.difficulty.toLowerCase()] || '#3b82f6';
+                return (
+                  <div key={d.difficulty}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full inline-block"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-sm font-medium text-gray-700 capitalize">
+                          {d.difficulty}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-400">
+                          {d.correct}/{d.total} correct
+                        </span>
+                        <span className="text-sm font-bold" style={{ color }}>
+                          {d.accuracy}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3">
+                      <div
+                        className="h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${d.accuracy}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <p className="text-gray-400 text-center py-8">Not enough data yet</p>
           )}
@@ -255,7 +308,12 @@ export default function Analytics() {
       {/* Topic Details Table */}
       {topicAnalysis.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Detailed Topic Breakdown</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Detailed Topic Breakdown</h2>
+            <span className="text-xs text-gray-500">
+              {topicAnalysis.length} topic{topicAnalysis.length !== 1 ? 's' : ''}
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -268,7 +326,9 @@ export default function Analytics() {
                 </tr>
               </thead>
               <tbody>
-                {topicAnalysis.map((topic, i) => (
+                {topicAnalysis
+                  .slice((topicPage - 1) * TOPICS_PER_PAGE, topicPage * TOPICS_PER_PAGE)
+                  .map((topic, i) => (
                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium text-gray-900">{topic.topic}</td>
                     <td className="text-center py-3 px-4 text-gray-600">{topic.total}</td>
@@ -305,6 +365,40 @@ export default function Analytics() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {topicAnalysis.length > TOPICS_PER_PAGE && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-500">
+                Showing {(topicPage - 1) * TOPICS_PER_PAGE + 1}–
+                {Math.min(topicPage * TOPICS_PER_PAGE, topicAnalysis.length)} of{' '}
+                {topicAnalysis.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTopicPage((p) => Math.max(1, p - 1))}
+                  disabled={topicPage === 1}
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
+                  {topicPage} / {Math.ceil(topicAnalysis.length / TOPICS_PER_PAGE)}
+                </span>
+                <button
+                  onClick={() =>
+                    setTopicPage((p) =>
+                      Math.min(Math.ceil(topicAnalysis.length / TOPICS_PER_PAGE), p + 1)
+                    )
+                  }
+                  disabled={topicPage >= Math.ceil(topicAnalysis.length / TOPICS_PER_PAGE)}
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

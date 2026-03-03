@@ -75,8 +75,11 @@ exports.submitAttempt = async (req, res) => {
 
     // Update user stats
     const user = await User.findById(req.userId);
-    user.updateStats(attempt.correctAnswers, attempt.totalQuestions, attempt.totalTimeTaken);
-    await user.save();
+  user.updateStats(attempt.correctAnswers, attempt.totalQuestions, attempt.totalTimeTaken);
+  await user.save();
+
+  // Fetch fresh user data to return to client (omit sensitive fields)
+  const updatedUser = await User.findById(req.userId).select('-password -__v');
 
     res.status(201).json({
       message: 'Test submitted and graded successfully!',
@@ -93,6 +96,7 @@ exports.submitAttempt = async (req, res) => {
         topicWiseScore: attempt.topicWiseScore,
         difficultyWiseScore: attempt.difficultyWiseScore,
       },
+      user: updatedUser,
     });
   } catch (error) {
     console.error('SubmitAttempt error:', error);
@@ -249,11 +253,14 @@ exports.getAnalytics = async (req, res) => {
 
     // Strengths and weaknesses (topics with highest/lowest accuracy)
     const sortedTopics = [...topicAnalysis].sort((a, b) => b.accuracy - a.accuracy);
-    const strengths = sortedTopics.slice(0, 3).filter((t) => t.accuracy >= 60);
-    const weaknesses = sortedTopics
+    // Strengths: top 3 topics by accuracy (with at least one question)
+    const strengths = sortedTopics.filter((t) => t.total > 0).slice(0, 3);
+    // Weaknesses: bottom 3 topics by accuracy (with at least one question).
+    // Even if accuracies are above 60, show the bottom topics as areas to improve.
+    const weaknesses = [...sortedTopics]
       .reverse()
-      .slice(0, 3)
-      .filter((t) => t.accuracy < 60);
+      .filter((t) => t.total > 0)
+      .slice(0, 3);
 
     // Recent attempts
     const recentAttempts = attempts.slice(-5).reverse().map((a) => ({

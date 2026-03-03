@@ -114,6 +114,21 @@ const testSchema = new mongoose.Schema(
       default: 0,
     },
     tags: [String],
+    // Admin assignment fields
+    isAdminTest: {
+      type: Boolean,
+      default: false,
+    },
+    assignedTo: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    deadline: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -84,7 +84,14 @@ export default function MyTests() {
             <div key={test._id} className="card hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">{test.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900 truncate">{test.title}</h3>
+                    {test.isAdminTest && (
+                      <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium shrink-0">
+                        Assigned
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1.5">
                     <span className="text-xs text-gray-500">
                       {test.config?.totalQuestions} questions

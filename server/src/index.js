@@ -9,6 +9,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const testRoutes = require('./routes/testRoutes');
 const attemptRoutes = require('./routes/attemptRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/attempts', attemptRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

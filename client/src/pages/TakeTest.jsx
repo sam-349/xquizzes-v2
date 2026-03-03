@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { testAPI, attemptAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   Clock,
   ChevronLeft,
@@ -27,6 +28,7 @@ export default function TakeTest() {
   const [questionTimes, setQuestionTimes] = useState({});
   const lastTimestamp = useRef(Date.now());
   const [showConfirm, setShowConfirm] = useState(false);
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     fetchTest();
@@ -121,6 +123,12 @@ export default function TakeTest() {
       });
 
       toast.success(autoSubmit ? 'Time up! Test submitted.' : 'Test submitted successfully!');
+      // Refresh user/profile so dashboard updates immediately
+      try {
+        await refreshUser();
+      } catch (e) {
+        console.warn('Failed to refresh user after submit', e);
+      }
       navigate(`/attempt/${res.data.attempt.id}/review`, { state: { attempt: res.data.attempt } });
     } catch (error) {
       toast.error('Failed to submit test.');

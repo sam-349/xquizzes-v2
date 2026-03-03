@@ -116,17 +116,26 @@ exports.generateTest = async (req, res) => {
   }
 };
 
-// GET /api/tests - Get all tests for the current user
+// GET /api/tests - Get all tests for the current user (own + assigned)
 exports.getMyTests = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const query = { createdBy: req.userId };
+    const query = {
+      $or: [
+        { createdBy: req.userId },
+        { assignedTo: req.userId },
+      ],
+    };
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { tags: { $regex: search, $options: 'i' } },
+      query.$and = [
+        {
+          $or: [
+            { title: { $regex: search, $options: 'i' } },
+            { tags: { $regex: search, $options: 'i' } },
+          ],
+        },
       ];
     }
 

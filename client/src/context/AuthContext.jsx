@@ -37,8 +37,28 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
+  const adminLogin = async (email, password) => {
+    const res = await authAPI.adminLogin({ email, password });
+    const { token: newToken, user: userData } = res.data;
+    localStorage.setItem('xquizzes_token', newToken);
+    localStorage.setItem('xquizzes_user', JSON.stringify(userData));
+    setToken(newToken);
+    setUser(userData);
+    return userData;
+  };
+
   const register = async (name, email, password) => {
     const res = await authAPI.register({ name, email, password });
+    const { token: newToken, user: userData } = res.data;
+    localStorage.setItem('xquizzes_token', newToken);
+    localStorage.setItem('xquizzes_user', JSON.stringify(userData));
+    setToken(newToken);
+    setUser(userData);
+    return userData;
+  };
+
+  const adminRegister = async (name, email, password, adminSecretKey) => {
+    const res = await authAPI.adminRegister({ name, email, password, adminSecretKey });
     const { token: newToken, user: userData } = res.data;
     localStorage.setItem('xquizzes_token', newToken);
     localStorage.setItem('xquizzes_user', JSON.stringify(userData));
@@ -60,7 +80,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, register, logout, refreshUser, isAuthenticated: !!user }}
+      value={{ user, token, loading, login, adminLogin, adminRegister, register, logout, refreshUser, isAuthenticated: !!user }}
     >
       {children}
     </AuthContext.Provider>

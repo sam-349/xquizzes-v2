@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Brain, Eye, EyeOff } from 'lucide-react';
+import { Brain, Eye, EyeOff, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -23,6 +23,12 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
+      // If backend returns 403 with redirectTo, it means admin tried user login
+      if (error.response?.status === 403 && error.response?.data?.redirectTo) {
+        toast.error('Admin accounts must use the admin login portal.');
+        navigate('/admin/login');
+        return;
+      }
       toast.error(error.response?.data?.message || 'Login failed.');
     } finally {
       setLoading(false);
@@ -96,6 +102,16 @@ export default function Login() {
               Sign Up
             </Link>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <Link
+              to="/admin/login"
+              className="flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              Admin Login
+            </Link>
+          </div>
         </div>
       </div>
     </div>
