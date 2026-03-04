@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { testAPI } from '../services/api';
-import { FileText, Trash2, Play, Clock, Search } from 'lucide-react';
+import { FileText, Trash2, Play, Clock, Search, AlertTriangle, CalendarClock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function MyTests() {
@@ -80,15 +80,24 @@ export default function MyTests() {
         </div>
       ) : (
         <div className="space-y-3">
-          {tests.map((test) => (
-            <div key={test._id} className="card hover:shadow-md transition-shadow">
+          {tests.map((test) => {
+            const isExpired = test.isAdminTest && test.deadline && new Date() > new Date(test.deadline);
+            const deadlineDate = test.deadline ? new Date(test.deadline) : null;
+
+            return (
+            <div key={test._id} className={`card hover:shadow-md transition-shadow ${isExpired ? 'opacity-70 border-red-200' : ''}`}>
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-gray-900 truncate">{test.title}</h3>
                     {test.isAdminTest && (
                       <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium shrink-0">
                         Assigned
+                      </span>
+                    )}
+                    {isExpired && (
+                      <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-medium shrink-0 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Expired
                       </span>
                     )}
                   </div>
@@ -109,6 +118,18 @@ export default function MyTests() {
                     <span className="text-xs text-gray-500">
                       {test.generationType === 'document' ? '📄 Document' : '💡 Topic'}
                     </span>
+                    {deadlineDate && (
+                      <>
+                        <span className="text-gray-300">•</span>
+                        <span className={`text-xs flex items-center gap-1 ${isExpired ? 'text-red-500 font-medium' : 'text-orange-500'}`}>
+                          <CalendarClock className="w-3 h-3" />
+                          {isExpired
+                            ? `Deadline was ${deadlineDate.toLocaleDateString()}`
+                            : `Due: ${deadlineDate.toLocaleDateString()} ${deadlineDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          }
+                        </span>
+                      </>
+                    )}
                   </div>
                   {test.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -124,12 +145,18 @@ export default function MyTests() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    to={`/test/${test._id}/take`}
-                    className="btn-primary text-sm flex items-center gap-1"
-                  >
-                    <Play className="w-3.5 h-3.5" /> Take Test
-                  </Link>
+                  {isExpired ? (
+                    <span className="text-xs text-red-500 font-medium px-3 py-2 bg-red-50 rounded-lg">
+                      Deadline Passed
+                    </span>
+                  ) : (
+                    <Link
+                      to={`/test/${test._id}/take`}
+                      className="btn-primary text-sm flex items-center gap-1"
+                    >
+                      <Play className="w-3.5 h-3.5" /> Take Test
+                    </Link>
+                  )}
                   <button
                     onClick={() => handleDelete(test._id)}
                     className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
@@ -139,7 +166,8 @@ export default function MyTests() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

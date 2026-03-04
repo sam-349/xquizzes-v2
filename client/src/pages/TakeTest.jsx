@@ -61,7 +61,11 @@ export default function TakeTest() {
       setTest(res.data.test);
       setTimeLeft((res.data.test.config?.timeLimitMinutes || 30) * 60);
     } catch (error) {
-      toast.error('Failed to load test.');
+      if (error.response?.data?.deadlineExpired) {
+        toast.error('This test has passed its deadline and can no longer be taken.');
+      } else {
+        toast.error('Failed to load test.');
+      }
       navigate('/my-tests');
     } finally {
       setLoading(false);

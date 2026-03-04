@@ -21,7 +21,8 @@ exports.getDashboardStats = async (req, res) => {
 
     // Average accuracy across all attempts
     const accuracyAgg = await TestAttempt.aggregate([
-      { $group: { _id: null, avgAccuracy: { $avg: '$scores.percentage' } } },
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, avgAccuracy: { $avg: '$accuracy' } } },
     ]);
     const avgAccuracy = accuracyAgg.length > 0 ? Math.round(accuracyAgg[0].avgAccuracy) : 0;
 

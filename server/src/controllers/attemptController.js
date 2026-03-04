@@ -15,6 +15,14 @@ exports.submitAttempt = async (req, res) => {
       return res.status(404).json({ message: 'Test not found.' });
     }
 
+    // Check deadline for admin-assigned tests
+    if (test.isAdminTest && test.deadline && new Date() > new Date(test.deadline)) {
+      return res.status(403).json({
+        message: 'This test has passed its deadline. Submission is no longer accepted.',
+        deadlineExpired: true,
+      });
+    }
+
     // Grade each answer
     const gradedAnswers = [];
     for (const submittedAnswer of answers) {

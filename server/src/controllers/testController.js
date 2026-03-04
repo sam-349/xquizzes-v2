@@ -188,6 +188,14 @@ exports.getTestForTaking = async (req, res) => {
       return res.status(404).json({ message: 'Test not found.' });
     }
 
+    // Check deadline for admin-assigned tests
+    if (test.isAdminTest && test.deadline && new Date() > new Date(test.deadline)) {
+      return res.status(403).json({
+        message: 'This test has passed its deadline and can no longer be taken.',
+        deadlineExpired: true,
+      });
+    }
+
     // Strip answers and explanations
     const sanitizedQuestions = test.questions.map((q) => ({
       _id: q._id,
