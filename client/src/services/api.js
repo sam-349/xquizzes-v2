@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: '/api',
+  // Use Vite environment variable for the API base URL at build time.
+  // If not provided, fall back to '/api' to keep local dev working with a proxy.
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
 });
 
 // Attach token to every request

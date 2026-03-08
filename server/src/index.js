@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const chatController = require('./controllers/chatController');
 const connectDB = require('./config/db');
 
 // Route imports
@@ -37,6 +38,9 @@ app.use('/api/notifications', notificationRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Chat endpoint (proxied to Generative Language API)
+app.post('/api/chat', chatController.chat);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

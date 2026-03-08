@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Eye, EyeOff, Key, UserPlus } from 'lucide-react';
+import { Shield, Eye, EyeOff, Key, UserPlus, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminRegister() {
@@ -18,14 +18,24 @@ export default function AdminRegister() {
   const [showSecret, setShowSecret] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Password requirement checks for inline helper
+  const pw = form.password || '';
+  const lengthOk = pw.length >= 8 && pw.length <= 12;
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasLower = /[a-z]/.test(pw);
+  const hasDigit = /\d/.test(pw);
+  const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password || !form.adminSecretKey) {
       toast.error('Please fill in all fields.');
       return;
     }
-    if (form.password.length < 6) {
-      toast.error('Password must be at least 6 characters.');
+  // Password policy: 8-12 chars, must include upper+lower letters, numbers and special characters
+  const strongPass = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/;
+    if (form.password.length < 8 || form.password.length > 12 || !strongPass.test(form.password)) {
+      toast.error('Password must be 8-12 characters and include uppercase and lowercase letters, numbers, and special characters.');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -103,6 +113,29 @@ export default function AdminRegister() {
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+              </div>
+              {/* Inline helper / tooltip for password requirements */}
+              <div className="mt-2 text-xs text-gray-300 space-y-1">
+                <div className={`flex items-center gap-2 ${lengthOk ? 'text-green-400' : 'text-gray-500'}`}>
+                  <Check className="w-3 h-3" />
+                  <span>8–12 characters</span>
+                </div>
+                <div className={`flex items-center gap-2 ${hasUpper ? 'text-green-400' : 'text-gray-500'}`}>
+                  <Check className="w-3 h-3" />
+                  <span>At least one uppercase letter</span>
+                </div>
+                <div className={`flex items-center gap-2 ${hasLower ? 'text-green-400' : 'text-gray-500'}`}>
+                  <Check className="w-3 h-3" />
+                  <span>At least one lowercase letter</span>
+                </div>
+                <div className={`flex items-center gap-2 ${hasDigit ? 'text-green-400' : 'text-gray-500'}`}>
+                  <Check className="w-3 h-3" />
+                  <span>At least one number</span>
+                </div>
+                <div className={`flex items-center gap-2 ${hasSpecial ? 'text-green-400' : 'text-gray-500'}`}>
+                  <Check className="w-3 h-3" />
+                  <span>At least one special character</span>
+                </div>
               </div>
             </div>
 

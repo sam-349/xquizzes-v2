@@ -12,8 +12,16 @@ router.post(
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters'),
+      .isLength({ min: 8, max: 12 })
+      .withMessage('Password must be 8-12 characters')
+      .custom((value) => {
+        // Require at least one letter, one number and one special character
+  const strongPass = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/;
+        if (!strongPass.test(value)) {
+          throw new Error('Password must include uppercase, lowercase, numbers and special characters');
+        }
+        return true;
+      }),
   ],
   authController.register
 );
@@ -45,8 +53,15 @@ router.post(
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters'),
+      .isLength({ min: 8, max: 12 })
+      .withMessage('Password must be 8-12 characters')
+      .custom((value) => {
+  const strongPass = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/;
+        if (!strongPass.test(value)) {
+          throw new Error('Password must include uppercase, lowercase, numbers and special characters');
+        }
+        return true;
+      }),
     body('adminSecretKey').notEmpty().withMessage('Admin secret key is required'),
   ],
   authController.adminRegister

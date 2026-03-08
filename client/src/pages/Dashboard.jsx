@@ -12,6 +12,7 @@ import {
   BarChart3,
   ArrowRight,
 } from 'lucide-react';
+import ChatWidget from '../components/ChatWidget';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -221,6 +222,8 @@ export default function Dashboard() {
           <ArrowRight className="w-5 h-5 text-gray-400" />
         </Link>
       )}
+      {/* Chat widget (floating) */}
+      <ChatWidget userId={user?.id || user?._id} />
     </div>
   );
 }
