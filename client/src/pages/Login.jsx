@@ -10,6 +10,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,6 +18,7 @@ export default function Login() {
       toast.error('Please fill in all fields.');
       return;
     }
+    setErrorMessage('');
     setLoading(true);
     try {
       await login(form.email, form.password);
@@ -26,10 +28,13 @@ export default function Login() {
       // If backend returns 403 with redirectTo, it means admin tried user login
       if (error.response?.status === 403 && error.response?.data?.redirectTo) {
         toast.error('Admin accounts must use the admin login portal.');
+        setErrorMessage('Admin accounts must use the admin login portal.');
         navigate('/admin/login');
         return;
       }
-      toast.error(error.response?.data?.message || 'Login failed.');
+      const message = error.response?.data?.message || 'Login failed.';
+      toast.error(message);
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }
@@ -94,6 +99,7 @@ export default function Login() {
                 'Sign In'
               )}
             </button>
+            {errorMessage && <p className="text-sm text-red-600 text-center">{errorMessage}</p>}
           </form>
 
           <p className="text-center mt-6 text-sm text-gray-500">

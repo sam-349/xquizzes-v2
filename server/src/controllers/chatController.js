@@ -1,7 +1,30 @@
-const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const systemPrompt = `You are an educational assistant. Answer only educational questions related to technology, medicine, and general education topics. Provide clear, factual, and concise explanations. When appropriate, offer quick examples, steps, or study suggestions. If a request falls outside the educational scope or asks for harmful/medical advice beyond general guidance, politely decline and recommend consulting a qualified professional.`;
+
+const modelCache = new Map();
+function getModel(modelName) {
+  if (modelCache.has(modelName)) {
+    return modelCache.get(modelName);
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  const client = new GoogleGenerativeAI(apiKey);
+  const model = client.getGenerativeModel({
+    model: modelName,
+    systemInstruction: systemPrompt,
+  });
+
+  modelCache.set(modelName, model);
+  return model;
+}
 
 // POST /api/chat
-// body: { messages: [{ role: 'user'|'assistant'|'system', text: string }] }
+// body: { messages: [{ role: 'user'|'assistant', text: string }] }
 exports.chat = async (req, res) => {
   try {
     const { messages } = req.body;
@@ -10,42 +33,68 @@ exports.chat = async (req, res) => {
       return res.status(400).json({ message: 'Messages are required.' });
     }
 
-    // System prompt restricting behavior to educational content
-    const systemPrompt = `You are an educational assistant. Answer only educational questions related to technology, medicine, and general education topics. Provide clear, factual, and concise explanations. When appropriate, provide examples, steps, or brief study suggestions. If a question is outside the educational scope or requests harmful/medical advice beyond general information, politely decline and recommend consulting a qualified professional.`;
+    const sanitized = messages
+      .filter((m) => m?.text?.trim())
+      .slice(-20) // keep recent context
+      .map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.text.trim() }],
+      }));
 
-    // Build a single prompt text from conversation
-    let promptText = systemPrompt + '\n\nConversation:\n';
-    messages.forEach((m) => {
-      const role = m.role || 'user';
-      const label = role === 'user' ? 'User' : role === 'assistant' ? 'Assistant' : 'System';
-      promptText += `${label}: ${m.text}\n`;
+    if (!sanitized.length) {
+      return res.status(400).json({ message: 'At least one non-empty message is required.' });
+    }
+
+    const configuredModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const fallbackModels = Array.from(
+      new Set([
+        configuredModel,
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+      ])
+    );
+
+    const errors = [];
+    for (const modelName of fallbackModels) {
+      try {
+        const model = getModel(modelName);
+        const result = await model.generateContent({
+          contents: sanitized,
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 600,
+            topP: 0.95,
+          },
+        });
+
+        const reply = result?.response?.text()?.trim();
+        if (!reply) {
+          throw new Error('AI returned an empty response.');
+        }
+
+        return res.json({ reply, model: modelName });
+      } catch (err) {
+        const status = err?.response?.status;
+        const msg = err?.response?.data?.error?.message || err.message || 'Unknown error';
+        errors.push(`${modelName}: ${msg}`);
+
+        if (![429, 500, 502, 503].includes(status)) {
+          break; // non-transient error, no need to try more models
+        }
+      }
+    }
+
+    return res.status(503).json({
+      message: 'AI service is temporarily unavailable. Please try again in a moment.',
+      details: errors,
     });
-    promptText += '\nAssistant:';
-
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ message: 'AI API key not configured on the server.' });
-
-    const url = `https://generativelanguage.googleapis.com/v1beta2/models/${model}:generateText?key=${apiKey}`;
-
-    const body = {
-      prompt: {
-        text: promptText,
-      },
-      // tuning options
-      temperature: 0.2,
-      candidateCount: 1,
-      maxOutputTokens: 800,
-    };
-
-    const response = await axios.post(url, body, { headers: { 'Content-Type': 'application/json' } });
-    const data = response.data;
-    // Response shape: { candidates: [ { output: '...' } ] }
-  const reply = (data?.candidates && data.candidates[0]?.output) || data?.output || '';
-
-    res.json({ reply });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ message: 'Server error during chat.' });
+    console.error('Chat error:', error?.response?.data || error.message || error);
+    if (error.message?.includes('GEMINI_API_KEY')) {
+      return res.status(500).json({ message: 'AI API key is missing on the server.' });
+    }
+    const status = error?.response?.status || 500;
+    const details = error?.response?.data?.error?.message || error?.response?.data?.message;
+    res.status(status).json({ message: details || 'Server error during chat.' });
   }
 };

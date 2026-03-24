@@ -95,12 +95,11 @@ export default function ChatWidget({ userId }) {
     setLoading(true);
 
     try {
-      // Build messages for backend, mapping local roles to API roles
       const session = sessions.find((s) => s.id === activeId);
-      const payloadMessages = (session?.messages || [])
-        .map((m) => ({ role: m.role === 'bot' ? 'assistant' : m.role === 'user' ? 'user' : 'user', text: m.text }))
-        // include the just-sent message if not yet in session (addMessage already appended it)
-        .slice(-20); // limit to last 20 messages to reduce size
+      const history = session ? [...session.messages, userMsg] : [userMsg];
+      const payloadMessages = history
+        .slice(-20)
+        .map((m) => ({ role: m.role === 'bot' ? 'assistant' : 'user', text: m.text }));
 
       const resp = await API.post('/chat', { messages: payloadMessages });
       const replyText = resp?.data?.reply || 'Sorry, I could not generate a response.';
@@ -165,7 +164,7 @@ export default function ChatWidget({ userId }) {
                 <MessageSquare className="w-6 h-6 text-primary-600" />
                 <div>
                   <div className="text-sm font-semibold">Study Assistant</div>
-                  <div className="text-xs text-gray-500">AI helper (local mode)</div>
+                  <div className="text-xs text-gray-500">AI helper (live)</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">

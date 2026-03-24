@@ -15,11 +15,17 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses globally
+// Handle 401 responses globally (skip auth endpoints so inline errors show)
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || '';
+    const isAuthEndpoint = ['/auth/login', '/auth/admin/login', '/auth/register', '/auth/admin/register'].some((path) =>
+      requestUrl.includes(path)
+    );
+
+    if (status === 401 && !isAuthEndpoint) {
       const userData = localStorage.getItem('xquizzes_user');
       const isAdmin = userData ? JSON.parse(userData).role === 'admin' : false;
       localStorage.removeItem('xquizzes_token');
